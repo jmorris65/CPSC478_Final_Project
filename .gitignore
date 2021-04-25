@@ -1,0 +1,6 @@
+# ignore output images
+*.ppm
+# ignore object files
+*.o
+# ignore Eigen Library
+Eigen/*
