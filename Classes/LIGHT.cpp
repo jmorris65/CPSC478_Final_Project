@@ -36,9 +36,9 @@ int Light::getShadowRays (VEC3 p, int n, std::vector<VEC3> &v, std::vector<float
   return count;
 }
 
-bool Light::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> &v) const
+bool Light::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const
 {
-  return _shape->getRayIntersect (e, d, v);
+  return _shape->getRayIntersect (e, d, t, c, n);
 }
 
 std::string Light::toString (void) const

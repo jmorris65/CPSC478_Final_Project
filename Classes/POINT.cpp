@@ -6,10 +6,11 @@ Point::Point (VEC3 coords)
   _center = coords;
 }
 
-bool Point::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> &v) const
+bool Point::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const
 {
-  v.first = _epsilon;
-  v.second = nullptr;
+  t = _epsilon;
+  c = nullptr;
+  n = VEC3 (0.0, 1.0, 0.0);
 
   // Ray point intersection
   float t0 = (_center[0] - e[0]) / d[0],
@@ -24,8 +25,9 @@ bool Point::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> &v)
 
 
   if (t0 > _epsilon) {
-    v.first = t0;
-    v.second = this;
+    t = t0;
+    c = this;
+    n = -1.0 * d;
     return true;
   }
 

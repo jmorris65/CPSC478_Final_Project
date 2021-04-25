@@ -7,17 +7,17 @@ Sphere::Sphere (VEC3 center, float radius)
   _center = center;
 }
 
-bool Sphere::getRayIntersect (VEC3 _e, VEC3 _d, std::pair<float, const Actor *> &v) const
+bool Sphere::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const
 {
-  v.first = _epsilon;
-  v.second = nullptr;
+  t = _epsilon;
+  c = nullptr;
 
-  float A, B, C, radical, t;
-  VEC3 o = _e - _center;
+  float A, B, C, radical, t0;
+  VEC3 o = e - _center;
 
-  A = _d.dot (_d);
+  A = d.dot (d);
 
-  B = (2.0 * _d).dot (o);
+  B = (2.0 * d).dot (o);
 
   C = o.dot (o) - (_radius * _radius);
 
@@ -26,19 +26,21 @@ bool Sphere::getRayIntersect (VEC3 _e, VEC3 _d, std::pair<float, const Actor *> 
   if (radical < 0.0)
     return false;
 
-  t = (-1.0 * B - sqrt (radical)) / (2.0 * A);
+  t0 = (-1.0 * B - sqrt (radical)) / (2.0 * A);
 
-  if (t > _epsilon) {
-    v.first = t;
-    v.second = this;
+  if (t0 > _epsilon) {
+    t = t0;
+    c = this;
+    n = ((e + t0 * d) - _center).normalized ();
     return true;
   }
 
-  t = (-1.0 * B + sqrt (radical)) / (2.0 * A);
+  t0 = (-1.0 * B + sqrt (radical)) / (2.0 * A);
 
-  if (t > _epsilon) {
-    v.first = t;
-    v.second = this;
+  if (t0 > _epsilon) {
+    t = t0;
+    c = this;
+    n = ((e + t0 * d) - _center).normalized ();
     return true;
   }
 

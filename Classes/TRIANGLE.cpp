@@ -24,10 +24,11 @@ void Triangle::getVertices (VEC3 &a, VEC3 &b, VEC3 &c) const
   c = _c;
 }
 
-bool Triangle::getRayIntersect (VEC3 _e, VEC3 _d, std::pair<float, const Actor *> &v) const
+bool Triangle::getRayIntersect (VEC3 _e, VEC3 _d, float &t, const Actor *&c, VEC3 &n) const
 {
-  v.first = _epsilon;
-  v.second = nullptr;
+  t = _epsilon;
+  c = nullptr;
+  n = VEC3 (0.0, 1.0, 0.0);
 
   // Moller-Trumbore algorithm
   VEC3 vba = _b - _a;
@@ -47,11 +48,12 @@ bool Triangle::getRayIntersect (VEC3 _e, VEC3 _d, std::pair<float, const Actor *
   if (beta < 0 || beta > 1 - gamma)
     return false;
 
-  float t = vca.dot (veba) * d;
+  float t0 = vca.dot (veba) * d;
 
-  if (t > _epsilon) {
-    v.first = t;
-    v.second = this;
+  if (t0 > _epsilon) {
+    t = t0;
+    c = this;
+    n = _normal;
     return true;
   }
 

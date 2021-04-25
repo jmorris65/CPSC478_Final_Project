@@ -11,7 +11,7 @@ Cylinder::Cylinder (VEC3 lcenter, VEC3 rcenter, float radius)
   _center = lcenter;
   rcenter = rcenter - lcenter;
 
-  MATRIX4 rx = MATRIX4::Identity (), ry = MATRIX4::Identity ();
+  MATRIX4 rx = MATRIX4::Identity (), ry = MATRIX4::Identity (), rz = MATRIX4::Identity ();
 
 
   if (rcenter[1] != 0.0) {
@@ -33,16 +33,26 @@ Cylinder::Cylinder (VEC3 lcenter, VEC3 rcenter, float radius)
     rcenter = truncate (ry * extend (rcenter));
   }
 
-  std::cout << rcenter << std::endl;
+  if (rcenter[2] < 0.0) {
+    float tz = M_PI;
+    rz << cos (tz), 0.0, sin (tz), 0.0,
+          0.0, 1.0, 0.0, 0.0,
+	  -1.0 * sin (tz), 0.0, cos (tz), 0.0,
+	  0.0, 0.0, 0.0, 1.0;
+    rcenter = truncate (rz * extend (rcenter));
+  }
+
+  // std::cout << "\n\nrcenter = " << rcenter << "\n\n" << std::endl;
 
   _height = rcenter[2];
-  _rotation = ry * rx;
+  _rotation = rz * ry * rx;
 }
 
-bool Cylinder::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> &v) const
+bool Cylinder::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const
 {
-  v.first = _epsilon;
-  v.second = nullptr;
+  t = _epsilon;
+  c = nullptr;
+  n = VEC3 (0.0, 1.0, 0.0);
 
   e = truncate (_rotation * extend (e - _center));
   d = truncate (_rotation * extend (d));
@@ -62,8 +72,44 @@ bool Cylinder::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> 
   if (t0 > _epsilon) {
     contact = e + (t0 * d);
     if (contact[2] >= 0.0 && contact[2] <= _height) {
-      v.first = t0;
-      v.second = this;
+      t = t0;
+      c = this;
+      n = truncate (_rotation.transpose () * extend (contact - VEC3 (0.0, 0.0, contact[2]))).normalized ();
+      return true;
+    }
+  }
+
+  float invdz = 1.0 / d[2];
+
+  float tcap0 = (0.0 - e[2]) * invdz,
+	tcap1 = (_height - e[2]) * invdz;
+
+  float dir0 = -1.0,
+	dir1 = 1.0;
+
+  if (tcap0 > tcap1) {
+    std::swap (tcap0, tcap1);
+    std::swap (dir0, dir1);
+  }
+
+  if (tcap0 > _epsilon) {
+    contact = e + (tcap0 * d);
+
+    if ((contact[0] * contact[0]) + (contact[1] * contact[1]) <= (_radius * _radius)) {
+      t = tcap0;
+      c = this;
+      n = truncate (_rotation.transpose () * VEC4 (0.0, 0.0, dir0, 1.0)).normalized ();
+      return true;
+    }
+  }
+
+  if (tcap1 > _epsilon) {
+    contact = e + (tcap1 * d);
+    
+    if ((contact[0] * contact[0]) + (contact[1] * contact[1]) <= (_radius * _radius)) {
+      t = tcap0;
+      c = this;
+      n = truncate (_rotation.transpose () * VEC4 (0.0, 0.0, dir1, 1.0)).normalized ();
       return true;
     }
   }
@@ -74,8 +120,9 @@ bool Cylinder::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> 
   if (t1 > _epsilon) {
     contact = e + (t1 * d);
     if (contact[2] >= 0.0 && contact[2] <= _height) {
-      v.first = t1;
-      v.second = this;
+      t = t1;
+      c = this;
+      n = truncate (_rotation.transpose () * extend (contact - VEC3 (0.0, 0.0, contact[2])));
       return true;
     }
   }

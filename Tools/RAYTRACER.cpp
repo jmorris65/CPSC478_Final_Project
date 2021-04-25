@@ -183,7 +183,7 @@ void generateRay (int i, int j, VEC3 &o, VEC3 &d)
   d = s;
 }
 
-VEC3 shadeRay (VEC3 p, VEC3 d, const Actor *c) {
+VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
   // Interative and helper variables
   int i, j,
       rays,
@@ -196,11 +196,11 @@ VEC3 shadeRay (VEC3 p, VEC3 d, const Actor *c) {
   shared_ptr<Actor> a;
 
   // Hold object intersection results
-  pair<float, const Actor *> root;
+  float tp;
+  const Actor *cp;
 
   // Get vectors and colors important to shading computations
-  VEC3 n = c->getNormal (p),
-       r, e = -1.0 * d,
+  VEC3 np, r, e = -1.0 * d,
        scolor = c->getColor (),
        lcolor,
        kcolor;
@@ -235,7 +235,7 @@ VEC3 shadeRay (VEC3 p, VEC3 d, const Actor *c) {
 	a = actorIt->second;
 
 	// If another object is hit, ray is invalid
-	if (a->getRayIntersect (p, shadowRays[i], root)) {
+	if (a->getRayIntersect (p, shadowRays[i], tp, cp, np)) {
 	  // UPDATED
 	  break;
 	}
@@ -262,36 +262,37 @@ VEC3 shadeRay (VEC3 p, VEC3 d, const Actor *c) {
 VEC3 traceRay (VEC3 e, VEC3 d, int depth) {
   // Initialize color vector
   VEC3 color (0.0, 0.0, 0.0),
-       p, n, r;
+       p, n, np, r;
 
   // Depth limit reached return black
   if (depth == 0)
     return color;
 
   // Iterative and storage variables
-  pair<float, const Actor *> root;
+  
   int i;
   unsigned long id;
   enum J_MATERIAL matIn, matOut;
-  float best = _epsilon,
+  float best = _epsilon, tp,
 	rad, nonrad, nIn, nOut,
 	R0, kRefl, kRefr;
 
   map<unsigned long, shared_ptr<Actor>>::iterator actorIt;
   
   shared_ptr<Actor> a;
-  const Actor *c;
+  const Actor *c = nullptr, *cp;
 
   for (actorIt = _objects.begin (); actorIt != _objects.end (); actorIt++) {
     // Get next object in vector
     a = actorIt->second;
 
     // Get intersect
-    if (a->getRayIntersect (e, d, root)) {
-      if (best == _epsilon || root.first < best) {
-	best = root.first;
+    if (a->getRayIntersect (e, d, tp, cp, np)) {
+      if (best == _epsilon || tp < best) {
+	best = tp;
 	id = actorIt->first;
-	c = root.second;
+	c = cp;
+	n = np;
       }
     }
   }
@@ -301,9 +302,6 @@ VEC3 traceRay (VEC3 e, VEC3 d, int depth) {
     
     // Compute contact point
     p = e + (d * best);
-
-    // Get normal at contact point
-    n = c->getNormal (p);
 
     matIn = J_AIR;
     matOut = _objects[id]->material ();
@@ -349,7 +347,7 @@ VEC3 traceRay (VEC3 e, VEC3 d, int depth) {
     }
     
     // Compute object color
-    color = color + shadeRay (p, d, c);
+    color = color + shadeRay (p, d, n, c);
   }
 
   color[0] = (color[0] > 1.0) ? 1.0 : color[0];
@@ -386,6 +384,7 @@ void addSkeletonToFrame ()
   setSkeletonToFrame ();
   _displayer.ComputeBonePositions (DisplaySkeleton::BONES_AND_LOCAL_FRAMES);
 
+  bool usingSpheres = false;
   int i, j;
   vector<MATRIX4> &rotations = _displayer.rotations ();
   vector<MATRIX4> &scalings = _displayer.scalings ();
@@ -405,33 +404,39 @@ void addSkeletonToFrame ()
     leftVertex = rotation * scaling * leftVertex + translation;
     rightVertex = rotation * scaling * rightVertex + translation;
 
-    VEC3 direction = (rightVertex - leftVertex).head<3>();
-    float magnitude = direction.norm ();
-    direction *= 1.0 / magnitude;
+    if (usingSpheres) {
+      VEC3 direction = (rightVertex - leftVertex).head<3>();
+      float magnitude = direction.norm ();
+      direction *= 1.0 / magnitude;
 
-    float sphereRadius = 0.05;
-    int totalSpheres = magnitude / (2.0 * sphereRadius);
-    float rayIncrement = magnitude / (float) totalSpheres;
-    VEC3 color (1.0, 1.0, 1.0);
-    VEC3 rot (0.0, 0.0, 0.0);
+      float sphereRadius = 0.05;
+      int totalSpheres = magnitude / (2.0 * sphereRadius);
+      float rayIncrement = magnitude / (float) totalSpheres;
+      VEC3 color (1.0, 1.0, 1.0);
+      VEC3 rot (0.0, 0.0, 0.0);
 
-    // makeSphere (sphereRadius, 1, color, leftVertex.head<3> (), rot);
-    // makeSphere (sphereRadius, 1, color, rightVertex.head<3> (), rot);
-    std::shared_ptr<Actor> a;
-    a.reset (new Sphere (leftVertex.head<3> (), sphereRadius));
-    a->setColor (color);
-    addObject (a);
-
-    a.reset (new Sphere (rightVertex.head<3> (), sphereRadius));
-    a->setColor (color);
-    addObject (a);
-
-
-    for (j = 0; j < totalSpheres; j++) {
-      VEC3 cent = ((float) j + 0.5) * rayIncrement * direction + leftVertex.head<3> ();
-      // makeSphere (sphereRadius, 1, color, cent, rot);
-      a.reset (new Sphere (cent, sphereRadius));
+      // makeSphere (sphereRadius, 1, color, leftVertex.head<3> (), rot);
+      // makeSphere (sphereRadius, 1, color, rightVertex.head<3> (), rot);
+      shared_ptr<Actor> a;
+      a.reset (new Sphere (leftVertex.head<3> (), sphereRadius));
       a->setColor (color);
+      addObject (a);
+      
+      a.reset (new Sphere (rightVertex.head<3> (), sphereRadius));
+      a->setColor (color);
+      addObject (a);
+
+      for (j = 0; j < totalSpheres; j++) {
+	VEC3 cent = ((float) j + 0.5) * rayIncrement * direction + leftVertex.head<3> ();
+	// makeSphere (sphereRadius, 1, color, cent, rot);
+	a.reset (new Sphere (cent, sphereRadius));
+	a->setColor (color);
+	addObject (a);
+      }
+    } else {
+      shared_ptr<Actor> a;
+      a.reset (new Cylinder (leftVertex.head<3> (), rightVertex.head<3> (), 0.05));
+      a->setColor (VEC3 (1.0, 1.0, 1.0));
       addObject (a);
     }
   }

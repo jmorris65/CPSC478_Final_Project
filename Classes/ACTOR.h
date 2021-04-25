@@ -40,7 +40,7 @@ class Actor {
 
     // Required Implementations
     // Function to return roots
-    virtual bool getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> &v) const = 0;
+    virtual bool getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const = 0;
     // Get normal to surface
     virtual VEC3 getNormal (VEC3 p) const = 0;
     // Get random points

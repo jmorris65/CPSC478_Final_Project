@@ -144,11 +144,15 @@ void buildTree (const std::map<unsigned long,std::shared_ptr<Triangle>> &m, std:
 bool getBoundedIntersect (const VEC3 &e, const VEC3 &d,
 		const std::map<unsigned long, std::shared_ptr<Triangle>> &m, 
 		const std::shared_ptr<BoundingTree> b,
-		std::pair<float, const Actor *> &v)
+		float &t, const Actor *&c, VEC3 &n)
 {
-  std::pair<float, const Actor *> p;
-  v.first = _epsilon;
-  v.second = nullptr;
+  t = _epsilon;
+  c = nullptr;
+  n = VEC3 (0.0, 1.0, 0.0);
+
+  float tp;
+  const Actor *cp;
+  VEC3 np;
 
   if (!rayBoxIntersect (e, d, b->vMin, b->vMax, 0.0, FLT_MAX))
     return false;
@@ -158,10 +162,11 @@ bool getBoundedIntersect (const VEC3 &e, const VEC3 &d,
   if (b->validChildren) {
 
     for (i = 0; i < 8; ++i) {
-      if (b->children[i] && getBoundedIntersect (e, d, m, b->children[i], p)) {
-	if (!hit || p.first < v.first) {
-	  v.first = p.first;
-	  v.second = p.second;
+      if (b->children[i] && getBoundedIntersect (e, d, m, b->children[i], tp, cp, np)) {
+	if (!hit || tp < t) {
+	  t = tp;
+	  c = cp;
+	  n = np;
 	}
 	hit = true;
       }
@@ -170,10 +175,11 @@ bool getBoundedIntersect (const VEC3 &e, const VEC3 &d,
   } else {
 
     for (const int &id : b->ids) {
-      if (m.at(id)->getRayIntersect (e, d, p)) {
-	if (!hit || p.first < v.first) {
-	  v.first = p.first;
-	  v.second = p.second;
+      if (m.at(id)->getRayIntersect (e, d, tp, cp, np)) {
+	if (!hit || tp < t) {
+	  t = tp;
+	  c = cp;
+	  n = np;
 	}
 	hit = true;
       }
@@ -263,29 +269,30 @@ void CustomActor::addShapes (std::vector<Triangle *> &shapes)
   rebuildTree ();
 }
 
-bool CustomActor::getRayIntersect (VEC3 e, VEC3 d, std::pair<float, const Actor *> &v) const
+bool CustomActor::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const
 {
   bool a = false,
        b;
 
-  std::pair<float, const Actor *> p;
-  v.first = _epsilon;
-  v.second = nullptr;
+  float tp;
+  const Actor *cp;
+  VEC3 np;
 
   if (_validTree) {
 
-    return getBoundedIntersect (e, d, _shapes, _bounds, v);
+    return getBoundedIntersect (e, d, _shapes, _bounds, t, c, n);
 
   } else {
     std::map<unsigned long, std::shared_ptr<Triangle>>::const_iterator it;
 
     for (it = _shapes.begin (); it != _shapes.end (); it++) {
-      if ((b = it->second->getRayIntersect (e, d, p))) {
-	if (v.first == _epsilon || p.first < v.first) {
-	  v.first = p.first;
-	  v.second = p.second;
+      if ((b = it->second->getRayIntersect (e, d, tp, cp, np))) {
+	if (!a || tp < t) {
+	  t = tp;
+	  c = cp;
+	  n = np;
+	  a = b;
 	}
-	a = b;
       }
     }
   }
