@@ -29,8 +29,6 @@ int Light::getShadowRays (VEC3 p, int n, std::vector<VEC3> &v, std::vector<float
 
     k = sqrt (u.dot (u));
     u = u / k;
-
-    k = clamp (1.0 / k);
   }
 
   return count;

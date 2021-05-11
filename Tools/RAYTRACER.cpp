@@ -30,6 +30,7 @@ static DisplaySkeleton _displayer;
 static Skeleton *_skeleton;
 static Motion *_motion;
 static bool _loadedSkeleton;
+static bool _track;
 static int _currentFrame;
 static int _FPS;
 static int _end;
@@ -235,8 +236,7 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
 	a = actorIt->second;
 
 	// If another object is hit, ray is invalid
-	if (a->getRayIntersect (p, shadowRays[i], tp, cp, np)) {
-	  // UPDATED
+	if (a->getRayIntersect (p, shadowRays[i], tp, cp, np) && tp < intensities[i]) {
 	  break;
 	}
       }
@@ -246,12 +246,12 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
 	// Compute and add Lambertian shading
         lcolor = l->getColor ();
         kcolor = VEC3 (lcolor[0] * scolor[0], lcolor[1] * scolor[1], lcolor[2] * scolor[2]);
-	color = color + ((max ((float) 0.0, (float) n.dot (shadowRays[i])) * (1.0 / (float) rays) * intensities[i]) * kcolor);
+	color = color + ((max ((float) 0.0, (float) n.dot (shadowRays[i])) * (1.0 / (float) rays) * clamp (1.0 / intensities[i])) * kcolor);
 
 	// Compute and add Phong shading
 	r = -1.0 * shadowRays[i] + (2.0 * (float) n.dot (shadowRays[i])) * n;
 	r = r / sqrt (r.dot (r));
-	color = color + ((pow (max ((float) 0.0, (float) e.dot (r)), 10) * (1.0 / (float) rays) * intensities[i]) * kcolor);
+	color = color + ((pow (max ((float) 0.0, (float) e.dot (r)), 10) * (1.0 / (float) rays) * clamp (1.0 / intensities[i])) * kcolor);
       }
     }
   }
@@ -379,7 +379,7 @@ void setSkeletonToFrame (void)
   }
 }
 
-void addSkeletonToFrame ()
+VEC3 addSkeletonToFrame ()
 {
   setSkeletonToFrame ();
   _displayer.ComputeBonePositions (DisplaySkeleton::BONES_AND_LOCAL_FRAMES);
@@ -393,6 +393,8 @@ void addSkeletonToFrame ()
 
   int totalBones = rotations.size ();
 
+  VEC3 skeletonEye;
+
   for (int i = 1; i < totalBones; i++) {
     MATRIX4 &rotation = rotations[i];
     MATRIX4 &scaling = scalings[i];
@@ -403,6 +405,10 @@ void addSkeletonToFrame ()
 
     leftVertex = rotation * scaling * leftVertex + translation;
     rightVertex = rotation * scaling * rightVertex + translation;
+
+    if (i == 1) {
+      skeletonEye = translation.head<3> ();
+    }
 
     if (usingSpheres) {
       VEC3 direction = (rightVertex - leftVertex).head<3>();
@@ -441,15 +447,24 @@ void addSkeletonToFrame ()
     }
   }
 
-  _currentFrame = _currentFrame + _FPS; 
+  _currentFrame = _currentFrame + _FPS;
+
+  return skeletonEye;
 }
 
 void makeFrame (string filename) {
   int numPixels = _x * _y,
       i, x, y;
 
+  VEC3 skeletonEye;
+
   if (_loadedSkeleton) {
-    addSkeletonToFrame ();
+    skeletonEye = addSkeletonToFrame ();
+  }
+
+  if (_track) {
+    VEC3 newEye = skeletonEye + VEC3 (3.0, 0.0, -3.0);
+    setLookAt (newEye, skeletonEye, _v);
   }
 
   float *pixels = (float *) malloc (3 * numPixels * sizeof (float));
@@ -517,6 +532,10 @@ void loadSkeleton (std::string s, std::string m, int FPS, int start, int frames)
   _currentFrame = start;
   _loadedSkeleton = true;
   _end = start * (frames * _FPS);
+}
+
+void trackSkeleton (void) {
+  _track = true;
 }
 
 void compileMovie (std::string root)
