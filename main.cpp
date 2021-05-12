@@ -132,6 +132,8 @@ void movie (void)
     cout << "Rendered Frame " << i << endl;
   }
 
+  exit (0);
+
   // compileMovie (string (root));
 }
 

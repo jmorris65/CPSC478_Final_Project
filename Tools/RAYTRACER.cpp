@@ -49,7 +49,7 @@ const float _epsilon = 0.001;
 static int _depthLimit = 10;
 
 // Distributions
-static int _shadowDistro = 50;
+static int _shadowDistro = 1;
 
 static bool _depthField;
 static int _depthDistro = 1;
