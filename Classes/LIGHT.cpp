@@ -29,9 +29,15 @@ int Light::getShadowRays (VEC3 p, int n, std::vector<VEC3> &v, std::vector<float
 
     k = sqrt (u.dot (u));
     u = u / k;
+
   }
 
   return count;
+}
+
+float Light::getIntensity (void) const
+{
+  return _intensity;
 }
 
 bool Light::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const
@@ -58,7 +64,7 @@ VEC3 Light::getNormal (VEC3 p) const
 
 bool Light::hasChild (unsigned long index) const
 {
-  return (index == _id) || (index == _shape->hasChild (index));
+  return (index == _id) || _shape->hasChild (index);
 }
 
 VEC3 Light::getColor (void) const

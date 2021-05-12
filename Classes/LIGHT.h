@@ -12,6 +12,7 @@ class Light : public Actor {
     // Personal
     Light (Actor *shape, VEC3 color, float intensity);
     int getShadowRays (VEC3 p, int n, std::vector<VEC3> &v, std::vector<float> &j) const;
+    float getIntensity (void) const;
 
     // Derived
     virtual bool getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const override;

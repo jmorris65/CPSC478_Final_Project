@@ -91,9 +91,9 @@ int Triangle::getRandomPoints (int n, std::vector<VEC3> &points) const
     u = jrand ();
     v = 1.0 - u;
 
-    points.push_back (_a + u * v0 + v * v1);
+    points.push_back ((_a + u * v0 + v * v1));
   }
-  return 0;
+  return n;
 }
 
 void Triangle::translate (VEC3 t) {

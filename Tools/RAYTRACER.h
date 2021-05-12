@@ -35,6 +35,7 @@ void setLookAt (const VEC3 &, const VEC3 &, const VEC3 &);
 void setPerspective (float, float, float);
 void setRes (int, int);
 void setDepthLimit (int);
+void setDepthField (float, float, int);
 
 // Object management
 int addObject (std::shared_ptr<Actor>);
@@ -45,8 +46,8 @@ int addLight (std::shared_ptr<Light>);
 void clearLights (void);
 
 // Skeleton management
-void loadSkeleton (std::string s, std::string m, int FPS, int start, int frames);
-void trackSkeleton ();
+void loadSkeleton (std::string s, std::string m, int FPS, int start, int frames, MATRIX4 r, VEC3 t);
+void trackSkeleton (float t);
 
 // Useful routines
 shared_ptr<Actor> makeSphere (float, int, VEC3, VEC3, VEC3);

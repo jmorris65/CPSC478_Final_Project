@@ -19,22 +19,25 @@ static float _l = -1.0,
 	     _r = 1.0,
 	     _b = -1.0,
 	     _t = 1.0,
-	     _n = 1.0,
-	     _f;
+	     _n = 1.0;
 
 // Object array
 static map<unsigned long, shared_ptr<Actor>> _objects;
 
 // Stick-Man classes
-static DisplaySkeleton _displayer;
-static Skeleton *_skeleton;
-static Motion *_motion;
+static vector<DisplaySkeleton> _displayers;
+static Skeleton * _skeleton;
+static Motion * _motion;
 static bool _loadedSkeleton;
 static bool _track;
-static int _currentFrame;
-static int _FPS;
-static int _end;
+static float _trackDistance;
+static vector<int> _currentFrames;
+static vector<int> _FPSs;
+static vector<int> _ends;
+static int skeletonLimit = 2;
 
+static vector<MATRIX4> _rEdits;
+static vector<VEC4> _tEdits;
 
 // Lights array
 static map<unsigned long, shared_ptr<Light>> _lights;
@@ -45,8 +48,13 @@ const float _epsilon = 0.001;
 // Depth
 static int _depthLimit = 10;
 
-// Distribution
-static int _distro = 1;
+// Distributions
+static int _shadowDistro = 1;
+
+static bool _depthField;
+static int _depthDistro = 1;
+static float _focalLength = 1.0;
+static float _aperture = 0.0;
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -154,7 +162,6 @@ void setPerspective (float n, float fovy, float aspect) {
   _b = b;
   _t = t;
   _n = n;
-  _f = 0;
 }
 
 void setRes (int x, int y)
@@ -166,6 +173,17 @@ void setRes (int x, int y)
 void setDepthLimit (int d)
 {
   _depthLimit= d;
+}
+
+void setDepthField (float a, float f, int distro)
+{
+  _focalLength = f;
+  _depthDistro = distro;
+
+  _aperture = (a * _n) / f;
+  _aperture = a - _aperture;
+
+  _depthField = true;
 }
 
 void generateRay (int i, int j, VEC3 &o, VEC3 &d)
@@ -182,6 +200,27 @@ void generateRay (int i, int j, VEC3 &o, VEC3 &d)
 
   s = s / sqrt (s.dot (s));
   d = s;
+}
+
+void generateDepthRay (const VEC3 &o, const VEC3 &d, VEC3 &oJitter, VEC3 &dJitter)
+{
+  VEC3 p = _e - (_w * _focalLength);
+  VEC3 n = -1.0 * _w;
+
+  float den = n.dot (d);
+  if (den > 0.0) {
+    float t = (p - o).dot (n);
+    t = t / den;
+    VEC3 intersect = o + (d * t);
+
+    float uS = jrand () * _aperture;
+    float vS = jrand () * _aperture;
+
+    oJitter = o + uS * _u + vS * _v;
+    
+    dJitter = intersect - oJitter;
+    dJitter = dJitter / sqrt (dJitter.dot (dJitter));
+  }
 }
 
 VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
@@ -212,8 +251,8 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
   // Vector to store shadow rays
   vector<VEC3> shadowRays;
   vector<float> intensities;
-  shadowRays.reserve (_distro);
-  intensities.reserve (_distro);
+  shadowRays.reserve (_shadowDistro);
+  intensities.reserve (_shadowDistro);
 
   for (lightIt = _lights.begin (); lightIt != _lights.end (); lightIt++) {
 
@@ -221,12 +260,12 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
     l = lightIt->second;
 
     if (l->hasChild (c->getId ())) {
-      color = color + l->getColor ();
+      color = color + (c->getColor () * l->getIntensity ());
       continue;
     }
 
     // Get shadow rays
-    rays = l->getShadowRays (p, _distro, shadowRays, intensities);
+    rays = l->getShadowRays (p, _shadowDistro, shadowRays, intensities);
 
     // Iterate thought all shadow rays 
     for (i = 0; i < rays; ++i) {
@@ -236,7 +275,9 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
 	a = actorIt->second;
 
 	// If another object is hit, ray is invalid
-	if (a->getRayIntersect (p, shadowRays[i], tp, cp, np) && tp < intensities[i]) {
+	if (a->getRayIntersect (p, shadowRays[i], tp, cp, np) 
+	    && tp < intensities[i]
+	    && !l->hasChild (cp->getId ())) {
 	  break;
 	}
       }
@@ -357,39 +398,47 @@ VEC3 traceRay (VEC3 e, VEC3 d, int depth) {
   return color;
 }
 
-void setSkeletonToFrame (void)
+void setSkeletonToFrame (int n)
 {
-  // Code originally in previz.cpp
-  if (_currentFrame < 0) {
+  if (n >= _displayers.size ()) {
     exit (1);
   }
 
-  if (_displayer.GetSkeletonMotion (0) != nullptr) {
+  // Code originally in previz.cpp
+  if (_currentFrames[n] < 0) {
+    exit (1);
+  }
+
+  if (_displayers[n].GetSkeletonMotion (0) != nullptr) {
     int postureId;
-    if (_currentFrame >= _displayer.GetSkeletonMotion (0)->GetNumFrames ()) {
-      postureId = _displayer.GetSkeletonMotion (0)->GetNumFrames () - 1;
-    } else if (_currentFrame > _end) {
-      _currentFrame = _end;
-      postureId = _end;
+    
+    if (_currentFrames[n] >= _displayers[n].GetSkeletonMotion (0)->GetNumFrames ()) {
+      postureId = _displayers[n].GetSkeletonMotion (0)->GetNumFrames () - 1;
+    
+    } else if (_currentFrames[n] > _ends[n]) {
+      _currentFrames[n] = _ends[n];
+      postureId = _ends[n];
+    
     } else {
-      postureId = _currentFrame;
+      postureId = _currentFrames[n];
     }
 
-    _displayer.GetSkeleton (0)->setPosture (* (_displayer.GetSkeletonMotion (0)->GetPosture (postureId)));
+    _displayers[n].GetSkeleton (0)->setPosture (* (_displayers[n].GetSkeletonMotion (0)->GetPosture (postureId)));
   }
 }
 
-VEC3 addSkeletonToFrame ()
+VEC3 addSkeletonToFrame (int n)
 {
-  setSkeletonToFrame ();
-  _displayer.ComputeBonePositions (DisplaySkeleton::BONES_AND_LOCAL_FRAMES);
+  setSkeletonToFrame (n);
+  _displayers[n].ComputeBonePositions (DisplaySkeleton::BONES_AND_LOCAL_FRAMES);
 
   bool usingSpheres = false;
   int i, j;
-  vector<MATRIX4> &rotations = _displayer.rotations ();
-  vector<MATRIX4> &scalings = _displayer.scalings ();
-  vector<VEC4> &translations = _displayer.translations ();
-  vector<float> &lengths = _displayer.lengths ();
+
+  vector<MATRIX4> &rotations = _displayers[n].rotations ();
+  vector<MATRIX4> &scalings = _displayers[n].scalings ();
+  vector<VEC4> &translations = _displayers[n].translations ();
+  vector<float> &lengths = _displayers[n].lengths ();
 
   int totalBones = rotations.size ();
 
@@ -403,8 +452,8 @@ VEC3 addSkeletonToFrame ()
     VEC4 leftVertex (0.0, 0.0, 0.0, 1.0);
     VEC4 rightVertex (0.0, 0.0, lengths[i], 1.0);
 
-    leftVertex = rotation * scaling * leftVertex + translation;
-    rightVertex = rotation * scaling * rightVertex + translation;
+    leftVertex = (_rEdits[n] * rotation) * scaling * leftVertex + (_tEdits[n] + (_rEdits[n] * translation));
+    rightVertex = (_rEdits[n] * rotation) * scaling * rightVertex + (_tEdits[n] + (_rEdits[n] * translation));
 
     if (i == 1) {
       skeletonEye = translation.head<3> ();
@@ -447,23 +496,26 @@ VEC3 addSkeletonToFrame ()
     }
   }
 
-  _currentFrame = _currentFrame + _FPS;
+  _currentFrames[n] = _currentFrames[n] + _FPSs[n];
 
   return skeletonEye;
 }
 
 void makeFrame (string filename) {
   int numPixels = _x * _y,
-      i, x, y;
+      i, j, x, y;
 
   VEC3 skeletonEye;
 
   if (_loadedSkeleton) {
-    skeletonEye = addSkeletonToFrame ();
+    skeletonEye = addSkeletonToFrame (0);
+    for (i = 1; i < _displayers.size (); ++i) {
+      addSkeletonToFrame (i);
+    }
   }
 
   if (_track) {
-    VEC3 newEye = skeletonEye + VEC3 (3.0, 0.0, -3.0);
+    VEC3 newEye = skeletonEye + VEC3 (_trackDistance, 0.0, -1.0 * _trackDistance);
     setLookAt (newEye, skeletonEye, _v);
   }
 
@@ -476,9 +528,20 @@ void makeFrame (string filename) {
       VEC3 o, d;
       generateRay (x, y, o, d);
 
-      VEC3 color;
+      VEC3 color (0.0, 0.0, 0.0);
 
-      color = traceRay (_e, d, _depthLimit);
+      if (_depthField) {
+	VEC3 oJitter, dJitter;
+	for (j = 0; j < _depthDistro; ++j) {
+	  generateDepthRay (o, d, oJitter, dJitter);
+	  VEC3 col = traceRay (oJitter, dJitter, _depthLimit);
+	  color = color + (col / _depthDistro);
+	}
+
+      } else {
+	color = traceRay (o, d, _depthLimit);
+
+      }
 
       pixels[3 * i] = 255.0 * color[0];
       pixels[3 * i + 1] = 255.0 * color[1];
@@ -515,27 +578,62 @@ void clearLights (void)
   _lights.clear ();
 }
 
-void loadSkeleton (std::string s, std::string m, int FPS, int start, int frames)
+void loadSkeleton (std::string s, std::string m, int FPS, int start, int frames, MATRIX4 r, VEC3 t)
 {
+  if (!_loadedSkeleton) {
+    _displayers.reserve (skeletonLimit);
+    _displayers.clear ();
+
+    _FPSs.reserve (skeletonLimit);
+    _FPSs.clear ();
+
+    _currentFrames.reserve (skeletonLimit);
+    _currentFrames.clear ();
+
+    _ends.reserve (skeletonLimit);
+    _ends.clear ();
+
+    _rEdits.reserve (skeletonLimit);
+    _rEdits.clear ();
+
+    _tEdits.reserve (skeletonLimit);
+    _tEdits.clear ();
+  }
+
+  int n = _displayers.size ();
+  if (n == skeletonLimit) {
+    return;
+  }
+
+  _displayers.push_back (DisplaySkeleton ());
+
   // Code originally in previz.cpp
   // Load skeleton
   _skeleton = new Skeleton (s.c_str (), MOCAP_SCALE);
   _skeleton->setBasePosture ();
-  _displayer.LoadSkeleton (_skeleton);
+  _displayers[n].LoadSkeleton (_skeleton);
+  
 
   // Load motion
   _motion = new Motion (m.c_str (), MOCAP_SCALE, _skeleton);
-  _displayer.LoadMotion (_motion);
-  _skeleton->setPosture (*(_displayer.GetSkeletonMotion (0)->GetPosture (0)));
+  _displayers[n].LoadMotion (_motion);
+  _skeleton->setPosture (*(_displayers[n].GetSkeletonMotion (0)->GetPosture (0)));
 
-  _FPS = FPS;
-  _currentFrame = start;
+  // State variables
+  _FPSs.push_back (FPS);
+  _currentFrames.push_back (start);
+  _ends.push_back (start + (frames * FPS));
   _loadedSkeleton = true;
-  _end = start * (frames * _FPS);
+
+  // Alterations
+  _rEdits.push_back (r);
+  _tEdits.push_back (extend (t));
+
 }
 
-void trackSkeleton (void) {
+void trackSkeleton (float t) {
   _track = true;
+  _trackDistance = t;
 }
 
 void compileMovie (std::string root)
@@ -721,9 +819,11 @@ shared_ptr<Actor> makeSphere (float radius, int subdivisions, VEC3 color, VEC3 t
   s->addShapes (triangles);
   s->rotate (rot);
   s->translate (transl);
+  s->rebuildTree ();
 
-  shared_ptr<Actor> sp = shared_ptr<Actor> (s);
+  shared_ptr<Light> sp (new Light (s, color, 1.0));
   addObject (sp);
+  addLight (sp);
   return sp;
 }
 
@@ -731,6 +831,7 @@ shared_ptr<Light> makeLight (Actor *s, VEC3 color, float intensity)
 {
   Light *l = new Light (s, color, intensity);
   shared_ptr<Light> lp = shared_ptr<Light> (l);
+  addObject (lp);
   addLight (lp);
   return lp;
 }

@@ -4,8 +4,64 @@ using namespace std;
 
 void addFloor (void);
 void addWalls (void);
+void addLights (int);
+void movie (void);
+void test (void);
 
 int main (int argc, char **argv)
+{
+  movie ();
+  // test ();
+  return EXIT_SUCCESS;
+}
+
+void test (void)
+{
+  char name[256];
+  VEC3 eye (0.0, 2.0, 8.0);
+  VEC3 lookAt (0.0, 1.0, 0.0);
+  VEC3 u (0.0, 1.0, 0.0);
+
+  int x = 500;
+  int y = 500;
+  int depthLimit = 10;
+
+  setLookAt (eye, lookAt, u);
+  setPerspective (1.0, 65.0, (float) x / (float) y);
+  setRes (x, y);
+  setDepthLimit (depthLimit);
+  setDepthField (0.15, 10.0, 10);
+
+  clearObjects ();
+  clearLights ();
+
+  Actor *a;
+
+  addFloor ();
+
+  // makeSphere (0.2, 0, VEC3 (0.75, 0.75, 0.75), VEC3 (-2.0, 3.0, -2.0), VEC3::Zero ());
+  
+  a = new Sphere (VEC3 (2.0, 3.0, 2.0), 0.2);
+  a->setColor (VEC3 (0.0, 0.3, 0.0));
+  makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
+
+  a = new Sphere (VEC3 (0.0, 2.0, 0.0), 1.0);
+  a->setColor (VEC3 (0.0, 0.0, 1.0));
+  addObject (shared_ptr<Actor> (a));
+
+  a = new Sphere (VEC3 (-2.0, 2.0, 2.0), 1.0);
+  a->setColor (VEC3 (0.0, 1.0, 0.0));
+  addObject (shared_ptr<Actor> (a));
+
+  a = new Sphere (VEC3 (2.0, 2.0, -2.0), 1.0);
+  a->setColor (VEC3 (1.0, 0.0, 0.0));
+  addObject (shared_ptr<Actor> (a));
+
+  sprintf (name, "Frames/distro.ppm");
+  makeFrame (string (name));
+}
+
+void movie (void)
 {
   // Constants
   char name[256];
@@ -19,12 +75,22 @@ int main (int argc, char **argv)
   int depthLimit = 10;
   // 1900
   int startFrame = 0;
-  int endFrame = 300;
+  int endFrame = 0;
   int FPS = 4;
+  int FPSz = 2;
   int s = 1900 + (startFrame * FPS);
 
-  loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, 300);
-  trackSkeleton ();
+  MATRIX4 rotationZom;
+  float angle = -45.0 * (M_PI / 180.0);
+  rotationZom << cos (angle), 0.0, sin (angle), 0.0,
+	          0.0, 1.0, 0.0, 0.0,
+		  -1.0 * sin (angle), 0.0, cos (angle), 0.0,
+		  0.0, 0.0, 0.0, 1.0;
+  VEC3 translateZom (-5.0, 0.0, 5.0);
+
+  loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, 300, MATRIX4::Identity (), VEC3::Zero ());
+  loadSkeleton ("zombie.asf", "zombie.amc", FPSz, 0, 300, rotationZom, translateZom);
+  trackSkeleton (2.0);
 
   int i;
   Actor *a;
@@ -34,24 +100,27 @@ int main (int argc, char **argv)
     setPerspective (1.0, 65.0, (float) x / (float) y);
     setRes (x, y);
     setDepthLimit (depthLimit);
+    // setDepthField (0.05, 3.0, 10);
     clearObjects ();
     clearLights ();
 
     // Storage
-    a = new Point (VEC3 (7.0, 2.0, 7.0));
+    /* a = new Point (VEC3 (7.0, 2.0, 7.0));
     makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
     a = new Point (VEC3 (-7.0, 2.0, -7.0));
     makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
     a = new Point (VEC3 (7.0, 2.0, -7.0));
     makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
     a = new Point (VEC3 (-7.0, 2.0, 7.0));
-    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
+    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);*/
 
-    a = new Point (VEC3 (1.75, 2.0, 1.5));
-    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
+    addLights (0);
+
+    // a = new Point (VEC3 (1.75, 2.0, 1.5));
+    // makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
 
     // Origin Marker
-    // a = new Sphere (VEC3 (0.0, 0.0, 0.0), 1.0);
+    // a = new Sphere (VEC3 (0.0, 0.0, 0.0), 0.5);
     // a->setColor (VEC3 (0.0, 0.0, 1.0));
     // addObject (shared_ptr<Actor> (a));
 
@@ -63,9 +132,7 @@ int main (int argc, char **argv)
     cout << "Rendered Frame " << i << endl;
   }
 
-  compileMovie (string (root));
-
-  return EXIT_SUCCESS;
+  // compileMovie (string (root));
 }
 
 void addFloor (void) {
@@ -278,5 +345,103 @@ void addWalls (void) {
     s->rebuildTree ();
 
     addObject (shared_ptr<Actor> (s));
+  }
+}
+
+void addLights (int state) {
+  const int nLights = 2;
+
+  int h, i, j, k, subs = 2;
+  float r = 0.15;
+
+  VEC3 rotA, transl, rotB;
+
+  for (k = 0; k < nLights; ++k) {
+    rotA = VEC3 (0.0, 0.0, 0.0);
+
+    if (k == 0) {
+      transl = VEC3 (3.5, 2.0, 1.4);
+    } else if (k == 1) {
+      transl = VEC3 (-3.5, 2.0, 1.4);
+    }
+
+    rotB = VEC3 (0.0, 45.0, 0.0);
+
+    vector<VEC3> v, n;
+    vector<VEC3I> t;
+
+    v.push_back (VEC3 (-1.0 * r, 0.0, 0.0));
+    v.push_back (VEC3 (r, 0.0, 0.0));
+    v.push_back (VEC3 (0.0, -1.0 * r, 0.0));
+    v.push_back (VEC3 (0.0, r, 0.0));
+    v.push_back (VEC3 (0.0, 0.0, -1.0 * r));
+
+    t.push_back (VEC3I (1, 3, 4));
+    t.push_back (VEC3I (4, 3, 0));
+    t.push_back (VEC3I (1, 2, 4));
+    t.push_back (VEC3I (4, 2, 0));
+
+    n.reserve (t.size ());
+    for (i = 0; i < t.size (); ++i) {
+      n[i] = VEC3 (0.0, 0.0, 0.0);
+
+      for (j = 0; j < 3; ++j) {
+	n[i] = n[i] + v[t[i][j]];
+      }
+      n[i] = n[i].normalized ();
+    }
+
+    int divs = subs;
+    vector<VEC3I> t0;
+    while (divs--) {
+      for (i = 0; i < t.size (); ++i) {
+	h = v.size ();
+	
+	v.push_back ((v[t[i][0]] + v[t[i][1]]).normalized () * r);
+	v.push_back ((v[t[i][1]] + v[t[i][2]]).normalized () * r);
+	v.push_back ((v[t[i][2]] + v[t[i][0]]).normalized () * r);
+
+	t0.push_back (VEC3I (t[i][0], h, h + 2));
+	t0.push_back (VEC3I (t[i][1], h, h + 1));
+	t0.push_back (VEC3I (t[i][2], h + 1, h + 2));
+	t0.push_back (VEC3I (h, h + 1, h + 2));
+      }
+      
+      t.clear ();
+      swap (t, t0);
+
+      n.reserve (t.size ());
+      for (i = 0; i < t.size (); ++i) {
+	n[i] = VEC3 (0.0, 0.0, 0.0);
+
+	for (j = 0; j < 3; ++j) {
+	  n[i] = n[i] + v[t[i][j]];
+	}
+	n[i] = n[i].normalized ();
+      }
+    }
+
+    vector<Triangle *> tr;
+    tr.reserve (t.size ());
+    tr.clear ();
+
+    for (i = 0; i < t.size (); ++i) {
+      tr.push_back (new Triangle (v[t[i][0]], v[t[i][1]], v[t[i][2]], n[i]));
+      
+      if (i % 2 == 0) {
+	tr[i]->setColor (VEC3 (0.25, 0.82, 0.96));
+      } else {
+	tr[i]->setColor (VEC3 (0.25, 0.96, 0.82));
+      }
+    }
+
+    CustomActor *s = new CustomActor ();
+    s->addShapes (tr);
+    s->rotate (rotA);
+    s->translate (transl);
+    s->rotate (rotB);
+    s->rebuildTree ();
+
+    makeLight (s, VEC3 (0.25, 0.82, 0.96), 0.95);
   }
 }

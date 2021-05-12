@@ -9,6 +9,6 @@ void jsrand (unsigned s)
 
 float jrand (void)
 {
-  seed = 2373697824597063315ULL*seed + 1;
+  seed = 237697824597063315ULL*seed + 1;
   return ((float) (seed >> 33) / (float) (RAND_MAX));
 }

@@ -70,7 +70,7 @@ int Sphere::getRandomPoints (int n, std::vector<VEC3> &points) const
 {
   VEC3 p;
 
-  for (int i = 0; i < n; ++n) {
+  for (int i = 0; i < n; ++i) {
     p[0] = jrand () * 2.0 - 1.0;
     p[1] = jrand () * 2.0 - 1.0;
     p[2] = jrand () * 2.0 - 1.0;
