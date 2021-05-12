@@ -1,5 +1,5 @@
 #include "MAIN.h"
-
+// Start work on OpenMP
 using namespace std;
 
 void addFloor (void);
