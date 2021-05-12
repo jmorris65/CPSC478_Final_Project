@@ -49,7 +49,7 @@ const float _epsilon = 0.001;
 static int _depthLimit = 10;
 
 // Distributions
-static int _shadowDistro = 1;
+static int _shadowDistro = 50;
 
 static bool _depthField;
 static int _depthDistro = 1;
@@ -277,7 +277,7 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
 	// If another object is hit, ray is invalid
 	if (a->getRayIntersect (p, shadowRays[i], tp, cp, np) 
 	    && tp < intensities[i]
-	    && !l->hasChild (cp->getId ())) {
+	    && !(l->hasChild (cp->getId ()))) {
 	  break;
 	}
       }
@@ -552,6 +552,7 @@ void makeFrame (string filename) {
   }
 
   writePPM (filename, _x, _y, pixels);
+  free (pixels);
 }
 
 int addObject (std::shared_ptr<Actor> a)
@@ -821,18 +822,10 @@ shared_ptr<Actor> makeSphere (float radius, int subdivisions, VEC3 color, VEC3 t
   s->translate (transl);
   s->rebuildTree ();
 
-  shared_ptr<Light> sp (new Light (s, color, 1.0));
-  addObject (sp);
-  addLight (sp);
-  return sp;
-}
 
-shared_ptr<Light> makeLight (Actor *s, VEC3 color, float intensity)
-{
-  Light *l = new Light (s, color, intensity);
-  shared_ptr<Light> lp = shared_ptr<Light> (l);
+  shared_ptr<Actor> sp (s);
+  shared_ptr<Light> lp (new Light (sp, color, 1.0));
   addObject (lp);
   addLight (lp);
   return lp;
 }
-

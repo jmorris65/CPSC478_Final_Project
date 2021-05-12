@@ -52,6 +52,5 @@ void trackSkeleton (float t);
 // Useful routines
 shared_ptr<Actor> makeSphere (float, int, VEC3, VEC3, VEC3);
 shared_ptr<Actor> makeSquare (float, float, int, int, VEC3, VEC3);
-shared_ptr<Light> makeLight (Actor *, VEC3, float);
 
 #endif

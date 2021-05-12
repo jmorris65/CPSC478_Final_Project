@@ -206,7 +206,7 @@ void printBoundingTree (const std::shared_ptr<BoundingTree> b, int depth) {
 CustomActor::CustomActor (void)
   : Actor ()
 {
-  _bounds = std::shared_ptr<BoundingTree> (new BoundingTree);
+  _bounds.reset (new BoundingTree);
 
   _bounds->vMin = VEC3 (FLT_MAX, FLT_MAX, FLT_MAX);
   _bounds->vMax = VEC3 (FLT_MIN, FLT_MIN, FLT_MIN);
@@ -237,7 +237,7 @@ void CustomActor::addShape (int id, std::shared_ptr<Triangle> shape)
 void CustomActor::rebuildTree (void) {
 
   std::map<unsigned long, std::shared_ptr<Triangle>>::iterator it;
-  _bounds = std::shared_ptr<BoundingTree> (new BoundingTree);
+  _bounds.reset (new BoundingTree);
 
   _bounds->vMin = VEC3 (FLT_MAX, FLT_MAX, FLT_MAX);
   _bounds->vMax = VEC3 (FLT_MIN, FLT_MIN, FLT_MIN);
@@ -266,7 +266,7 @@ void CustomActor::addShapes (std::vector<Triangle *> &shapes)
     _shapes[id] = std::shared_ptr<Triangle> (shape);
   }
 
-  rebuildTree ();
+  // rebuildTree ();
 }
 
 bool CustomActor::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 &n) const

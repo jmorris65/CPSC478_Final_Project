@@ -3,12 +3,12 @@
 // Initialization
 
 // Implementations
-Light::Light (Actor *shape, VEC3 color, float intensity)
+Light::Light (std::shared_ptr<Actor> shape, VEC3 color, float intensity)
   : Actor (),
     _intensity {intensity}
 {
   _color = color;
-  _shape = std::shared_ptr<Actor> (shape);
+  _shape = shape;
 }
 
 int Light::getShadowRays (VEC3 p, int n, std::vector<VEC3> &v, std::vector<float> &j) const

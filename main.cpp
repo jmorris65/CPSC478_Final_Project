@@ -30,7 +30,7 @@ void test (void)
   setPerspective (1.0, 65.0, (float) x / (float) y);
   setRes (x, y);
   setDepthLimit (depthLimit);
-  setDepthField (0.15, 10.0, 10);
+  // setDepthField (0.15, 10.0, 10);
 
   clearObjects ();
   clearLights ();
@@ -39,11 +39,11 @@ void test (void)
 
   addFloor ();
 
-  // makeSphere (0.2, 0, VEC3 (0.75, 0.75, 0.75), VEC3 (-2.0, 3.0, -2.0), VEC3::Zero ());
+  // makeSphere (0.2, 0, VEC3 (0.75, 0.75, 0.75), VEC3 (2.0, 3.0, 2.0), VEC3::Zero ());
   
-  a = new Sphere (VEC3 (2.0, 3.0, 2.0), 0.2);
-  a->setColor (VEC3 (0.0, 0.3, 0.0));
-  makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
+  // a = new Sphere (VEC3 (2.0, 3.0, 2.0), 0.2);
+  // a->setColor (VEC3 (0.0, 0.3, 0.0));
+  // makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
 
   a = new Sphere (VEC3 (0.0, 2.0, 0.0), 1.0);
   a->setColor (VEC3 (0.0, 0.0, 1.0));
@@ -90,7 +90,7 @@ void movie (void)
 
   loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, 300, MATRIX4::Identity (), VEC3::Zero ());
   loadSkeleton ("zombie.asf", "zombie.amc", FPSz, 0, 300, rotationZom, translateZom);
-  trackSkeleton (2.0);
+  trackSkeleton (4.0);
 
   int i;
   Actor *a;
@@ -197,7 +197,7 @@ void addFloor (void) {
   }
 
   s0->addShapes (tr0);
-  s0->rebuildTree ();
+  // s0->rebuildTree ();
 
   addObject (shared_ptr<Actor> (s0));
 }
@@ -342,16 +342,16 @@ void addWalls (void) {
     s->rotate (rotA);
     s->translate (transl);
     s->rotate (rotB);
-    s->rebuildTree ();
+    // s->rebuildTree ();
 
     addObject (shared_ptr<Actor> (s));
   }
 }
 
 void addLights (int state) {
-  const int nLights = 2;
+  const int nLights = 3;
 
-  int h, i, j, k, subs = 2;
+  int h, i, j, k, subs = 0;
   float r = 0.15;
 
   VEC3 rotA, transl, rotB;
@@ -360,9 +360,11 @@ void addLights (int state) {
     rotA = VEC3 (0.0, 0.0, 0.0);
 
     if (k == 0) {
-      transl = VEC3 (3.5, 2.0, 1.4);
+      transl = VEC3 (3.5, 2.0, 1.4 - _epsilon);
     } else if (k == 1) {
-      transl = VEC3 (-3.5, 2.0, 1.4);
+      transl = VEC3 (-3.5, 2.0, 1.4 - _epsilon);
+    } else if (k == 2) {
+      transl = VEC3 (0.0, 2.0, 3.5 - _epsilon);
     }
 
     rotB = VEC3 (0.0, 45.0, 0.0);
@@ -440,8 +442,12 @@ void addLights (int state) {
     s->rotate (rotA);
     s->translate (transl);
     s->rotate (rotB);
-    s->rebuildTree ();
+    // s->rebuildTree ();
 
-    makeLight (s, VEC3 (0.25, 0.82, 0.96), 0.95);
+    shared_ptr<Actor> sp (s);
+    shared_ptr<Light> l (new Light (sp, VEC3 (0.25, 0.82, 0.96), 0.95));
+
+    addObject (l);
+    addLight (l);
   }
 }
