@@ -1,4 +1,5 @@
 #include "MAIN.h"
+#include "mpi.h"
 // Start work on OpenMP
 using namespace std;
 
@@ -10,8 +11,10 @@ void test (void);
 
 int main (int argc, char **argv)
 {
+  MPI_Init (&argc, &argv); 
   movie ();
   // test ();
+  MPI_Finalize ();
   return EXIT_SUCCESS;
 }
 
@@ -41,10 +44,6 @@ void test (void)
 
   // makeSphere (0.2, 0, VEC3 (0.75, 0.75, 0.75), VEC3 (2.0, 3.0, 2.0), VEC3::Zero ());
   
-  // a = new Sphere (VEC3 (2.0, 3.0, 2.0), 0.2);
-  // a->setColor (VEC3 (0.0, 0.3, 0.0));
-  // makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
-
   a = new Sphere (VEC3 (0.0, 2.0, 0.0), 1.0);
   a->setColor (VEC3 (0.0, 0.0, 1.0));
   addObject (shared_ptr<Actor> (a));
@@ -63,7 +62,7 @@ void test (void)
 
 void movie (void)
 {
-  // Constants
+  // Constants to produce images
   char name[256];
   char root[] = "test";
   VEC3 eye (-4.0, 2.0, 4.0);
@@ -73,13 +72,15 @@ void movie (void)
   int x = 500;
   int y = 500;
   int depthLimit = 10;
-  // 1900
+  
+  // Starting Frame = 1900
+  // Variables to adjust movie start and end
   int startFrame = 0;
-  int endFrame = 0;
+  int endFrame = 300;
   int FPS = 4;
   int FPSz = 2;
-  int s = 1900 + (startFrame * FPS);
 
+  // Require zombie variables
   MATRIX4 rotationZom;
   float angle = -45.0 * (M_PI / 180.0);
   rotationZom << cos (angle), 0.0, sin (angle), 0.0,
@@ -88,53 +89,57 @@ void movie (void)
 		  0.0, 0.0, 0.0, 1.0;
   VEC3 translateZom (-5.0, 0.0, 5.0);
 
-  loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, 300, MATRIX4::Identity (), VEC3::Zero ());
-  loadSkeleton ("zombie.asf", "zombie.amc", FPSz, 0, 300, rotationZom, translateZom);
-  trackSkeleton (4.0);
+  // Iterative and MPI variables
+  int i, rank, size, rankStart, rankEnd;
 
-  int i;
-  Actor *a;
+  // Get MPI values
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
-  for (i = startFrame; i < endFrame + 1; i++) {
-    setLookAt (eye, lookAt, u);
-    setPerspective (1.0, 65.0, (float) x / (float) y);
-    setRes (x, y);
-    setDepthLimit (depthLimit);
-    // setDepthField (0.05, 3.0, 10);
-    clearObjects ();
-    clearLights ();
+  if (size > (endFrame - startFrame)) {
+    rankStart = startFrame + rank;
+    rankEnd = rankStart + 1;
 
-    // Storage
-    /* a = new Point (VEC3 (7.0, 2.0, 7.0));
-    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
-    a = new Point (VEC3 (-7.0, 2.0, -7.0));
-    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
-    a = new Point (VEC3 (7.0, 2.0, -7.0));
-    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
-    a = new Point (VEC3 (-7.0, 2.0, 7.0));
-    makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);*/
-
-    addLights (0);
-
-    // a = new Point (VEC3 (1.75, 2.0, 1.5));
-    // makeLight (a, VEC3 (1.0, 1.0, 1.0), 1.0);
-
-    // Origin Marker
-    // a = new Sphere (VEC3 (0.0, 0.0, 0.0), 0.5);
-    // a->setColor (VEC3 (0.0, 0.0, 1.0));
-    // addObject (shared_ptr<Actor> (a));
-
-    addFloor ();
-    addWalls ();
-
-    sprintf (name, "./Frames/%s.%04d.ppm", root, i);
-    makeFrame (string (name));
-    cout << "Rendered Frame " << i << endl;
+  } else if ((endFrame - startFrame) % size == 0) {
+    int step = (endFrame - startFrame) / size;
+    rankStart = rank * step;
+    rankEnd = rankStart + step;
+  } else {
+    rankStart = 0;
+    rankEnd = 0;
   }
 
-  exit (0);
+  if (rankEnd > rankStart && rankEnd <= endFrame) {
+    int s = 1900 + (rankStart * FPS);
+    int sz = 0 + (rankStart * FPSz);
+  
+    // Load up the actors
+    loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, 300, MATRIX4::Identity (), VEC3::Zero ());
+    loadSkeleton ("zombie.asf", "zombie.amc", FPSz, sz, 300, rotationZom, translateZom);
+    
+    for (i = rankStart; i < rankEnd; i++) {
+      setLookAt (eye, lookAt, u);
+      trackSkeleton (4.0);
+      setPerspective (1.0, 65.0, (float) x / (float) y);
+      setRes (x, y);
+      setDepthLimit (depthLimit);
+      // setDepthField (0.05, 3.0, 10);
+      clearObjects ();
+      clearLights ();
+      
+      addLights (0);
+      addFloor ();
+      addWalls ();
+      
+      sprintf (name, "./Frames/%s.%04d.ppm", root, i);
+      makeFrame (string (name));
+    }
+  }
 
-  // compileMovie (string (root));
+  MPI_Barrier (MPI_COMM_WORLD);
+  if (rank == 0) {
+    compileMovie (string (root));
+  }
 }
 
 void addFloor (void) {
