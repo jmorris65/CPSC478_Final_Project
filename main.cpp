@@ -379,7 +379,7 @@ void addWalls (void) {
 }
 
 void addLights (int state) {
-  const int nLights = 3;
+  const int nLights = 4;
 
   int h, i, j, k, subs = 0;
   float r = 0.15;
@@ -394,10 +394,16 @@ void addLights (int state) {
     } else if (k == 1) {
       transl = VEC3 (-3.5, 2.0, 1.4 - _epsilon);
     } else if (k == 2) {
-      transl = VEC3 (0.0, 2.0, 3.5 - _epsilon);
+      transl = VEC3 (3.25, 3.5, 2.20 - _epsilon);
+    } else if (k == 3) {
+      transl = VEC3 (1.75, 3.5, 2.20 - _epsilon);
     }
 
-    rotB = VEC3 (0.0, 45.0, 0.0);
+    if (k < 2) {
+      rotB = VEC3 (0.0, 45.0, 0.0);
+    } else {
+      rotB = VEC3 (0.0, -45.0, 0.0);
+    }
 
     vector<VEC3> v, n;
     vector<VEC3I> t;
