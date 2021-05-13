@@ -74,11 +74,12 @@ void movie (void)
   int depthLimit = 10;
   
   // Starting Frame = 1900
+  // Ending Frame = 2750
   // Variables to adjust movie start and end
   int startFrame = 0;
   int endFrame = 300;
   int FPS = 4;
-  int FPSz = 2;
+  int FPSz = 1;
 
   // Require zombie variables
   MATRIX4 rotationZom;
@@ -91,6 +92,11 @@ void movie (void)
 
   // Iterative and MPI variables
   int i, rank, size, rankStart, rankEnd;
+
+  // Event variables
+  int eventOne = 0,
+      eventTwo = 0,
+      eventThree = 0;
 
   // Get MPI values
   MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -111,15 +117,23 @@ void movie (void)
 
   if (rankEnd > rankStart && rankEnd <= endFrame) {
     int s = 1900 + (rankStart * FPS);
-    int sz = 0 + (rankStart * FPSz);
+    int e = (int) ((2740.0 - (float) s) / (float) FPS);
+    int sz = (rankStart * FPSz) - (65 * FPSz);
+
+    sz = (sz < 0) ? 0 : sz;
   
     // Load up the actors
-    loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, 300, MATRIX4::Identity (), VEC3::Zero ());
-    loadSkeleton ("zombie.asf", "zombie.amc", FPSz, sz, 300, rotationZom, translateZom);
+    loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, e, MATRIX4::Identity (), VEC3::Zero ());
     
     for (i = rankStart; i < rankEnd; i++) {
+
+      if (i > 64 && eventOne == 0) {
+        loadSkeleton ("zombie.asf", "zombie.amc", FPSz, sz, 300, rotationZom, translateZom);
+        eventOne = 1;
+      }
+
       setLookAt (eye, lookAt, u);
-      trackSkeleton (4.0);
+      trackSkeleton (2.0);
       setPerspective (1.0, 65.0, (float) x / (float) y);
       setRes (x, y);
       setDepthLimit (depthLimit);
@@ -127,7 +141,7 @@ void movie (void)
       clearObjects ();
       clearLights ();
       
-      addLights (0);
+      addLights (eventOne);
       addFloor ();
       addWalls ();
       
@@ -204,13 +218,13 @@ void addFloor (void) {
   }
 
   s0->addShapes (tr0);
-  // s0->rebuildTree ();
+  s0->rebuildTree ();
 
   addObject (shared_ptr<Actor> (s0));
 }
 
 void addWalls (void) {
-  const int nWalls = 7;
+  const int nWalls = 8;
   float r, c, h = 0.0;
   
   float l, w;
@@ -242,12 +256,19 @@ void addWalls (void) {
       l = 4.0;
       w = 20.0;
 
-    // Short room side walls
-    } else {
+    // Short room side wall
+    } else if (k == 6) {
       row = 1;
       col = 1;
       l = 2.0;
       w = 4.0;
+
+    // Mirror
+    } else {
+      row = 1;
+      col = 1;
+      l = 1.5;
+      w = 2.0;
     }
 
     if (k == 0) {
@@ -287,7 +308,7 @@ void addWalls (void) {
 
     } else if (k == 7) {
       rotA = VEC3 (0.0, 0.0, 90.0);
-      transl = VEC3 (l * 0.5 - 1.0, w * 0.5, l * 0.5 + 1.5);
+      transl = VEC3 (-2.25 + _epsilon, w * 0.5 + 1.0, 2.5);
       rotB = VEC3 (0.0, 45.0, 0.0);
 
     }
@@ -336,7 +357,9 @@ void addWalls (void) {
 				  v[t[i][1]],
 				  v[t[i][2]],
 				  n[i]));
-      if (i % 2 == 0) {
+      if (k == 7) {
+        tr[i]->setRefl ();
+      } else if (i % 2 == 0) {
 	tr[i]->setColor (VEC3 (1.0, 0.0, 0.0));
       } else {
 	tr[i]->setColor (VEC3 (0.0, 1.0, 0.0));
@@ -349,7 +372,7 @@ void addWalls (void) {
     s->rotate (rotA);
     s->translate (transl);
     s->rotate (rotB);
-    // s->rebuildTree ();
+    s->rebuildTree ();
 
     addObject (shared_ptr<Actor> (s));
   }
@@ -438,9 +461,9 @@ void addLights (int state) {
       tr.push_back (new Triangle (v[t[i][0]], v[t[i][1]], v[t[i][2]], n[i]));
       
       if (i % 2 == 0) {
-	tr[i]->setColor (VEC3 (0.25, 0.82, 0.96));
+	tr[i]->setColor (VEC3 (0.75, 0.75, 0.75));
       } else {
-	tr[i]->setColor (VEC3 (0.25, 0.96, 0.82));
+	tr[i]->setColor (VEC3 (0.75, 0.75, 0.75));
       }
     }
 
@@ -449,12 +472,15 @@ void addLights (int state) {
     s->rotate (rotA);
     s->translate (transl);
     s->rotate (rotB);
-    // s->rebuildTree ();
+    s->rebuildTree ();
 
     shared_ptr<Actor> sp (s);
-    shared_ptr<Light> l (new Light (sp, VEC3 (0.25, 0.82, 0.96), 0.95));
+    shared_ptr<Light> l (new Light (sp, VEC3 (0.75, 0.75, 0.75), 0.95));
 
     addObject (l);
-    addLight (l);
+
+    if (k != 1 || state == 1) {
+        addLight (l);
+    }
   }
 }

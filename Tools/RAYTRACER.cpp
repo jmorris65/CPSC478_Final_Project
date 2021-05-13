@@ -515,7 +515,12 @@ void makeFrame (string filename) {
   }
 
   if (_track) {
+    VEC3 shift (0.5, 0.0, 0.0);
     VEC3 newEye = skeletonEye + VEC3 (_trackDistance, 0.0, -1.0 * _trackDistance);
+
+    newEye = newEye + shift;
+    skeletonEye = skeletonEye + shift;
+
     setLookAt (newEye, skeletonEye, _v);
   }
 
