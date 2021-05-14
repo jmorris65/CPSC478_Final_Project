@@ -24,7 +24,7 @@ OBJECTS    = $(SOURCES:.cpp=.o)
 	mpicxx -g -O3 -w -c $< -o $@
 
 run: ${OBJECTS}
-	mpicxx $(OBJECTS) $(LDFLAGS) -o $@
+	mpicxx -g $(OBJECTS) $(LDFLAGS) -o $@
 
 clean:
 	rm -f *.o ${CLASSDIR}/*.o ${TOOLDIR}/*.o run

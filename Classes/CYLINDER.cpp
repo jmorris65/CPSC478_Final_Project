@@ -132,7 +132,7 @@ bool Cylinder::getRayIntersect (VEC3 e, VEC3 d, float &t, const Actor *&c, VEC3 
 
 VEC3 Cylinder::getNormal (VEC3 p) const
 {
-  p = truncate (_rotation * extend (p));
+  p = truncate (_rotation * extend (p - _center));
 
   VEC3 n = p - VEC3 (0.0, 0.0, p[2]);
 
@@ -151,7 +151,7 @@ int Cylinder::getRandomPoints (int n, std::vector<VEC3> &points) const
     z = jrand () * _height;
 
     p = VEC3 (x, y, z);
-    points.push_back (truncate (_rotation.transpose () * extend (p)));
+    points.push_back (truncate (_rotation.transpose () * extend (p)) + _center);
   }
   return i;
 }
@@ -170,9 +170,9 @@ std::string Cylinder::toString (void) const
 
 void Cylinder::rotate (VEC3 r)
 {
-  float tx = r[0],
-	ty = r[1],
-	tz = r[2];
+  float tx = r[0] * (M_PI / 180.0),
+	ty = r[1] * (M_PI / 180.0),
+	tz = r[2] * (M_PI / 180.0);
 
   MATRIX4 rx, ry, rz;
 
@@ -195,4 +195,9 @@ void Cylinder::rotate (VEC3 r)
 
   _center = truncate (all * extend (_center));
   _rotation = _rotation * all.transpose ();
+}
+
+void Cylinder::translate (VEC3 t)
+{
+  _center = _center + t;
 }

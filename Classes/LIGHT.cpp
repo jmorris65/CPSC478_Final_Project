@@ -14,12 +14,10 @@ Light::Light (std::shared_ptr<Actor> shape, VEC3 color, float intensity)
 int Light::getShadowRays (VEC3 p, int n, std::vector<VEC3> &v, std::vector<float> &j) const
 {
   int i, count;
-  v.clear ();
-  j.clear ();
   std::vector<VEC3> points;
   points.reserve (v.capacity ());
 
-  count = this->getRandomPoints (n, points);
+  count = _shape->getRandomPoints (n, points);
 
   for (i = 0; i < count; i++) {
     VEC3 &u = v[i];

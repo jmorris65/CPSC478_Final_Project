@@ -20,6 +20,7 @@ class Cylinder : public Actor {
     virtual std::string toString (void) const override;
 
     virtual void rotate (VEC3 r) override;
+    virtual void translate (VEC3 r) override;
 };
 
 #endif

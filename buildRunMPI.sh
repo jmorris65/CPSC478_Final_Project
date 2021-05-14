@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --partition=cpsc424
 
-#SBATCH --ntasks=30
+#SBATCH --ntasks=60
 
 #SBATCH --ntasks-per-node=5
 
 #SBATCH --cpus-per-task=1
 
-#SBATCH --mem-per-cpu=5G
+#SBATCH --mem-per-cpu=15G
 
 #SBATCH --job-name=TestMov
 
@@ -20,4 +20,4 @@ module load iomkl
 make clean
 make
 
-mpiexec -n 30 ./run
+mpiexec -n 60 ./run

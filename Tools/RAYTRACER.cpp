@@ -264,6 +264,9 @@ VEC3 shadeRay (VEC3 p, VEC3 d, VEC3 n, const Actor *c) {
       continue;
     }
 
+    shadowRays.clear ();
+    intensities.clear ();
+
     // Get shadow rays
     rays = l->getShadowRays (p, _shadowDistro, shadowRays, intensities);
 

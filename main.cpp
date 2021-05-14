@@ -65,7 +65,7 @@ void movie (void)
   // Constants to produce images
   char name[256];
   char root[] = "test";
-  VEC3 eye (-4.0, 2.0, 4.0);
+  VEC3 eye (8.0, 8.0, -8.0);
   VEC3 lookAt (0.0, 1.0, 0.0);
   VEC3 u (0.0, 1.0, 0.0);
 
@@ -115,7 +115,7 @@ void movie (void)
 
   } else if ((endFrame - startFrame) % size == 0) {
     int step = (endFrame - startFrame) / size;
-    rankStart = rank * step;
+    rankStart = startFrame + rank * step;
     rankEnd = rankStart + step;
   } else {
     rankStart = 0;
@@ -151,7 +151,7 @@ void movie (void)
       setPerspective (1.0, 65.0, (float) x / (float) y);
       setRes (x, y);
       setDepthLimit (depthLimit);
-      setDepthField (0.05, 3.0, 10);
+      setDepthField (0.05, 3.0, 5);
       clearObjects ();
       clearLights ();
       
@@ -398,21 +398,22 @@ void addLights (int state) {
   int h, i, j, k, subs = 0;
   float r = 0.15;
 
+  float spacing = 10.0 * _epsilon;
   VEC3 rotA, transl, rotB;
 
   for (k = 0; k < nLights; ++k) {
     rotA = VEC3 (0.0, 0.0, 0.0);
 
     if (k == 0) {
-      transl = VEC3 (3.5, 2.0, 1.4 - _epsilon);
+      transl = VEC3 (3.5, 2.0, 1.4 - spacing);
     } else if (k == 1) {
-      transl = VEC3 (-3.5, 2.0, 1.4 - _epsilon);
+      transl = VEC3 (-3.5, 2.0, 1.4 - spacing);
     } else if (k == 2) {
-      transl = VEC3 (3.25, 3.5, 2.20 - _epsilon);
+      transl = VEC3 (3.25, 3.5, 2.20 - spacing);
     } else if (k == 3) {
-      transl = VEC3 (1.75, 3.5, 2.20 - _epsilon);
+      transl = VEC3 (1.75, 3.5, 2.20 - spacing);
     } else if (k == 4) {
-      transl = VEC3 (3.0, 2.0, 3.5 - _epsilon);
+      transl = VEC3 (3.0, 2.0, 3.5 - spacing);
     }
 
     if (k < 2 || k == 4) {
@@ -421,6 +422,7 @@ void addLights (int state) {
       rotB = VEC3 (0.0, -45.0, 0.0);
     }
 
+    /*
     vector<VEC3> v, n;
     vector<VEC3I> t;
 
@@ -489,15 +491,21 @@ void addLights (int state) {
       }
     }
 
-    CustomActor *s = new CustomActor ();
+    shared_ptr<CustomActor> s = make_shared<CustomActor> ();
     s->addShapes (tr);
     s->rotate (rotA);
     s->translate (transl);
     s->rotate (rotB);
     s->rebuildTree ();
+    */
 
-    shared_ptr<Actor> sp (s);
-    shared_ptr<Light> l (new Light (sp, VEC3 (0.75, 0.75, 0.75), 0.95));
+    shared_ptr<Cylinder> s = make_shared<Cylinder> (VEC3 (0.0, 0.0, 0.0), VEC3 (0.0, 0.0, -0.05), r);
+    s->setColor (VEC3 (0.75, 0.75, 0.75));
+    s->rotate (rotA);
+    s->translate (transl);
+    s->rotate (rotB);
+
+    shared_ptr<Light> l (new Light (s, VEC3 (0.75, 0.75, 0.75), 0.95));
 
     addObject (l);
 

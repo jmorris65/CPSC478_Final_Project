@@ -263,7 +263,7 @@ void CustomActor::addShapes (std::vector<Triangle *> &shapes)
 
   for (Triangle *shape : shapes) {
     unsigned long id = shape->getId ();
-    _shapes[id] = std::shared_ptr<Triangle> (shape);
+    _shapes[id].reset (shape);
   }
 
   // rebuildTree ();
