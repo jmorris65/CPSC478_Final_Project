@@ -34,7 +34,7 @@ static float _trackDistance;
 static vector<int> _currentFrames;
 static vector<int> _FPSs;
 static vector<int> _ends;
-static int skeletonLimit = 2;
+static int skeletonLimit = 3;
 
 static vector<MATRIX4> _rEdits;
 static vector<VEC4> _tEdits;
@@ -515,7 +515,7 @@ void makeFrame (string filename) {
   }
 
   if (_track) {
-    VEC3 shift (0.5, 0.0, 0.0);
+    VEC3 shift (0.5, 0.5, 0.0);
     VEC3 newEye = skeletonEye + VEC3 (_trackDistance, 0.0, -1.0 * _trackDistance);
 
     newEye = newEye + shift;

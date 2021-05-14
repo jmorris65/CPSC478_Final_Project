@@ -82,21 +82,28 @@ void movie (void)
   int FPSz = 1;
 
   // Require zombie variables
-  MATRIX4 rotationZom;
-  float angle = -45.0 * (M_PI / 180.0);
-  rotationZom << cos (angle), 0.0, sin (angle), 0.0,
+  MATRIX4 rotationZomOne, rotationZomTwo;
+  float angleOne = -45.0 * (M_PI / 180.0);
+  rotationZomOne << cos (angleOne), 0.0, sin (angleOne), 0.0,
 	          0.0, 1.0, 0.0, 0.0,
-		  -1.0 * sin (angle), 0.0, cos (angle), 0.0,
+		  -1.0 * sin (angleOne), 0.0, cos (angleOne), 0.0,
 		  0.0, 0.0, 0.0, 1.0;
-  VEC3 translateZom (-5.0, 0.0, 5.0);
+  VEC3 translateZomOne (-5.0, 0.0, 5.0);
+
+  float angleTwo = 135.0 * (M_PI / 180.0);
+  rotationZomTwo << cos (angleTwo), 0.0, sin (angleTwo), 0.0,
+	          0.0, 1.0, 0.0, 0.0,
+		  -1.0 * sin (angleTwo), 0.0, cos (angleTwo), 0.0,
+		  0.0, 0.0, 0.0, 1.0;
+  VEC3 translateZomTwo (7.0, 0.0, -3.0);
+
 
   // Iterative and MPI variables
   int i, rank, size, rankStart, rankEnd;
 
   // Event variables
   int eventOne = 0,
-      eventTwo = 0,
-      eventThree = 0;
+      eventTwo = 0;
 
   // Get MPI values
   MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -118,9 +125,11 @@ void movie (void)
   if (rankEnd > rankStart && rankEnd <= endFrame) {
     int s = 1900 + (rankStart * FPS);
     int e = (int) ((2740.0 - (float) s) / (float) FPS);
-    int sz = (rankStart * FPSz) - (65 * FPSz);
+    int szOne = (rankStart * FPSz) - (65 * FPSz);
+    int szTwo = (rankStart * FPSz) - (205 * FPSz);
 
-    sz = (sz < 0) ? 0 : sz;
+    szOne = (szOne < 0) ? 0 : szOne;
+    szTwo = (szTwo < 0) ? 0 : szTwo;
   
     // Load up the actors
     loadSkeleton ("wobble.asf", "wobble.amc", FPS, s, e, MATRIX4::Identity (), VEC3::Zero ());
@@ -128,8 +137,13 @@ void movie (void)
     for (i = rankStart; i < rankEnd; i++) {
 
       if (i > 64 && eventOne == 0) {
-        loadSkeleton ("zombie.asf", "zombie.amc", FPSz, sz, 300, rotationZom, translateZom);
+        loadSkeleton ("zombie.asf", "zombie.amc", FPSz, szOne, 300, rotationZomOne, translateZomOne);
         eventOne = 1;
+      }
+
+      if (i > 205 && eventOne == 1) {
+        loadSkeleton ("zombie.asf", "zombie.amc", FPSz, szTwo, 300, rotationZomTwo, translateZomTwo);
+        eventOne = 2;
       }
 
       setLookAt (eye, lookAt, u);
@@ -137,7 +151,7 @@ void movie (void)
       setPerspective (1.0, 65.0, (float) x / (float) y);
       setRes (x, y);
       setDepthLimit (depthLimit);
-      // setDepthField (0.05, 3.0, 10);
+      setDepthField (0.05, 3.0, 10);
       clearObjects ();
       clearLights ();
       
@@ -379,7 +393,7 @@ void addWalls (void) {
 }
 
 void addLights (int state) {
-  const int nLights = 4;
+  const int nLights = 5;
 
   int h, i, j, k, subs = 0;
   float r = 0.15;
@@ -397,9 +411,11 @@ void addLights (int state) {
       transl = VEC3 (3.25, 3.5, 2.20 - _epsilon);
     } else if (k == 3) {
       transl = VEC3 (1.75, 3.5, 2.20 - _epsilon);
+    } else if (k == 4) {
+      transl = VEC3 (3.0, 2.0, 3.5 - _epsilon);
     }
 
-    if (k < 2) {
+    if (k < 2 || k == 4) {
       rotB = VEC3 (0.0, 45.0, 0.0);
     } else {
       rotB = VEC3 (0.0, -45.0, 0.0);
@@ -485,7 +501,7 @@ void addLights (int state) {
 
     addObject (l);
 
-    if (k != 1 || state == 1) {
+    if ((k != 1 && k != 4) || (k == 1 && state > 0) || (k == 4 && state > 1)) {
         addLight (l);
     }
   }
