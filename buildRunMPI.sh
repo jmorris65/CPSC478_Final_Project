@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=cpsc424
 
-#SBATCH --ntasks=60
+#SBATCH --ntasks=100
 
 #SBATCH --ntasks-per-node=5
 
@@ -11,7 +11,7 @@
 
 #SBATCH --job-name=TestMov
 
-#SBATCH --time=1:00:00
+#SBATCH --time=8:00:00
 
 #SBATCH --output=%x.out
 
@@ -20,4 +20,4 @@ module load iomkl
 make clean
 make
 
-mpiexec -n 60 ./run
+mpiexec -n 100 ./run

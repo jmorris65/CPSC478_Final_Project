@@ -64,13 +64,13 @@ void movie (void)
 {
   // Constants to produce images
   char name[256];
-  char root[] = "test";
+  char root[] = "final";
   VEC3 eye (8.0, 8.0, -8.0);
   VEC3 lookAt (0.0, 1.0, 0.0);
   VEC3 u (0.0, 1.0, 0.0);
 
-  int x = 500;
-  int y = 500;
+  int x = 1000;
+  int y = 1000;
   int depthLimit = 10;
   
   // Starting Frame = 1900
@@ -102,8 +102,8 @@ void movie (void)
   int i, rank, size, rankStart, rankEnd;
 
   // Event variables
-  int eventOne = 0,
-      eventTwo = 0;
+  int eventOne = 0;
+  float eventTwo = 2.0;
 
   // Get MPI values
   MPI_Comm_size (MPI_COMM_WORLD, &size);
@@ -142,16 +142,22 @@ void movie (void)
       }
 
       if (i > 205 && eventOne == 1) {
-        loadSkeleton ("zombie.asf", "zombie.amc", FPSz, szTwo, 300, rotationZomTwo, translateZomTwo);
+        loadSkeleton ("zombie.asf", "zombie.amc", FPSz + 1, szTwo, 300, rotationZomTwo, translateZomTwo);
         eventOne = 2;
       }
 
+      if (i > 220 && eventTwo < 3.75) {
+        float POF = 240.0;
+        eventTwo = 2.0 + 1.75 * (((float) i - 220.0) / (POF - 220.0));
+      }
+
       setLookAt (eye, lookAt, u);
-      trackSkeleton (2.0);
+      trackSkeleton (1.0);
       setPerspective (1.0, 65.0, (float) x / (float) y);
       setRes (x, y);
       setDepthLimit (depthLimit);
-      setDepthField (0.05, 3.0, 5);
+      // Add DOF
+      setDepthField (0.07, eventTwo, 10);
       clearObjects ();
       clearLights ();
       
@@ -171,70 +177,70 @@ void movie (void)
 }
 
 void addFloor (void) {
+  const int nFloors = 2;
   float r, c, h = 0.0;
   float l = 30.0,
 	w = 30.0;
 
   int row = 1,
       col = 1;
-  int i, j;
+  int i, j, k;
 
-  CustomActor *s0 = new CustomActor ();
+  for (k = 0; k < nFloors; ++k) {
 
-  vector<VEC3> v0, n0;
-  vector<VEC3I> t0;
+    if (k == 1) h = 4.0;
 
-  for (i = 0; i < col + 1; ++i) {
-    c = (-1.0 * (w * 0.5)) + ((float) i * (w / (float) col));
-
-    for (j = 0; j < row + 1; ++j) {
-      r = (-1.0 * (l * 0.5)) + ((float) j * (l / (float) row));
-      v0.push_back (VEC3 (c, h, r));
+    vector<VEC3> v0, n0;
+    vector<VEC3I> t0;
+    
+    for (i = 0; i < col + 1; ++i) {
+      c = (-1.0 * (w * 0.5)) + ((float) i * (w / (float) col));
+      
+      for (j = 0; j < row + 1; ++j) {
+        r = (-1.0 * (l * 0.5)) + ((float) j * (l / (float) row));
+        v0.push_back (VEC3 (c, h, r));
+      }
     }
-  }
-
-  n0.reserve (2 * row * col);
-  t0.reserve (2 * row * col);
-
-  for (i = 0; i < col; ++i) {
-    for (j = 0; j < row; ++j) {
-
-      int topl = (i * (row + 1)) + j;
-      int topr = ((i + 1) * (row + 1)) + j;
-      int botl = (i * (row + 1)) + (j + 1);
-      int botr = ((i + 1) * (row + 1)) + (j + 1);
-
-      VEC3 u0 = v0[topl] - v0[topr];
-      VEC3 u1 = v0[botl] - v0[topr];
-      VEC3 u2 = v0[botr] - v0[topr];
-
-      t0.push_back (VEC3I (topl, topr, botl));
-      n0.push_back (u0.cross (u1).normalized ());
-
-      t0.push_back (VEC3I (topr, botr, botl));
-      n0.push_back (u1.cross (u2).normalized ());
+    
+    n0.reserve (2 * row * col);
+    t0.reserve (2 * row * col);
+    
+    for (i = 0; i < col; ++i) {
+      for (j = 0; j < row; ++j) {
+        
+        int topl = (i * (row + 1)) + j;
+        int topr = ((i + 1) * (row + 1)) + j;
+        int botl = (i * (row + 1)) + (j + 1);
+        int botr = ((i + 1) * (row + 1)) + (j + 1);
+        
+        VEC3 u0 = v0[topl] - v0[topr];
+        VEC3 u1 = v0[botl] - v0[topr];
+        VEC3 u2 = v0[botr] - v0[topr];
+        
+        t0.push_back (VEC3I (topl, topr, botl));
+        n0.push_back (u0.cross (u1).normalized ());
+        
+        t0.push_back (VEC3I (topr, botr, botl));
+        n0.push_back (u1.cross (u2).normalized ());
+      }
     }
-  }
-
-  vector<Triangle *> tr0;
-  tr0.reserve (t0.size ());
-
-  for (i = 0; i < 2 * row * col; i = i + 1) {
-    tr0.push_back (new Triangle (v0[t0[i][0]],
-				 v0[t0[i][1]],
-				 v0[t0[i][2]],
-				 n0[i]));
-    if (i % 2 == 0) {
-      tr0[i]->setColor (VEC3 (1.0, 0.0, 0.0));
-    } else {
-      tr0[i]->setColor (VEC3 (0.0, 1.0, 0.0));
+    
+    vector<Triangle *> tr0;
+    tr0.reserve (t0.size ());
+    
+    for (i = 0; i < 2 * row * col; i = i + 1) {
+      tr0.push_back (new Triangle (v0[t0[i][0]],
+				   v0[t0[i][1]],
+				   v0[t0[i][2]],
+				   n0[i]));
+      tr0[i]->setColor (VEC3 (0.689, 0.764, 0.764));
     }
+    
+    shared_ptr<CustomActor> s0 = make_shared<CustomActor> ();
+    s0->addShapes (tr0);
+    s0->rebuildTree ();
+    addObject (s0);
   }
-
-  s0->addShapes (tr0);
-  s0->rebuildTree ();
-
-  addObject (shared_ptr<Actor> (s0));
 }
 
 void addWalls (void) {
@@ -373,10 +379,8 @@ void addWalls (void) {
 				  n[i]));
       if (k == 7) {
         tr[i]->setRefl ();
-      } else if (i % 2 == 0) {
-	tr[i]->setColor (VEC3 (1.0, 0.0, 0.0));
       } else {
-	tr[i]->setColor (VEC3 (0.0, 1.0, 0.0));
+	tr[i]->setColor (VEC3 (0.568, 0.137, 0.137));
       }
     }
 
@@ -402,24 +406,28 @@ void addLights (int state) {
   VEC3 rotA, transl, rotB;
 
   for (k = 0; k < nLights; ++k) {
-    rotA = VEC3 (0.0, 0.0, 0.0);
+    if (k == 2 || k == 3) {
+      rotA = VEC3 (0.0, 0.0, 0.0);
+    } else {
+      rotA = VEC3 (-90.0, 0.0, 0.0);
+    }
 
     if (k == 0) {
-      transl = VEC3 (3.5, 2.0, 1.4 - spacing);
+      transl = VEC3 (2.5, 4.0 - spacing, -0.25);
     } else if (k == 1) {
-      transl = VEC3 (-3.5, 2.0, 1.4 - spacing);
+      transl = VEC3 (-3.5, 4.0 - spacing, -0.25);
     } else if (k == 2) {
       transl = VEC3 (3.25, 3.5, 2.20 - spacing);
     } else if (k == 3) {
       transl = VEC3 (1.75, 3.5, 2.20 - spacing);
     } else if (k == 4) {
-      transl = VEC3 (3.0, 2.0, 3.5 - spacing);
+      transl = VEC3 (3.0, 4.0 - spacing, 2.5);
     }
 
-    if (k < 2 || k == 4) {
-      rotB = VEC3 (0.0, 45.0, 0.0);
-    } else {
+    if (k == 2 || k == 3) {
       rotB = VEC3 (0.0, -45.0, 0.0);
+    } else {
+      rotB = VEC3 (0.0, 45.0, 0.0);
     }
 
     /*
