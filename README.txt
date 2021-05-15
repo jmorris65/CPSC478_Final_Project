@@ -11,4 +11,5 @@ Instructions To Build and Run:
 4) Run the executable (Use ./run)
 5) Output should be "final.0270.ppm"
 
-6) If running on hpc cluster grace, submit buildRunMPI.sh as a batch job (Use "sbatch buildRunMPI.sh")
+6) If running on hpc cluster grace, submit buildRunTest.sh as a batch job (Use "sbatch buildRunTest.sh")
+The "buildRunMPI.sh" shell script is used to build the movie which would also require a small change to "main.cpp.grace"
