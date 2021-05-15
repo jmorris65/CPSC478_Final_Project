@@ -1,4 +1,5 @@
 #include "MAIN.h"
+#include "mpi.h"
 // Start work on OpenMP
 using namespace std;
 
@@ -6,19 +7,32 @@ void addFloor (void);
 void addWalls (void);
 void addLights (int);
 void movie (void);
-void test (void);
+void test (int , int);
 
 int main (int argc, char **argv)
 {
-  movie ();
-  // test ();
+  MPI_Init (&argc, &argv); 
+  // movie ()
+  if (argc == 3) {
+    int state = atoi (argv[1]);
+    int num = atoi (argv[2]);
+    test (state, num);
+  }
+  MPI_Finalize ();
   return EXIT_SUCCESS;
 }
 
-void test (void)
+void test (int state, int num)
 {
   char name[256];
-  VEC3 eye (0.0, 2.0, 8.0);
+  VEC3 eye;
+  if (state == 0 || state == 1) {
+    eye = VEC3 (0.0, 8.0, 8.0);
+  }
+
+  if (state == 2 || state == 3) {
+    eye = VEC3 (0.0, 2.0, 8.0);
+  }
   VEC3 lookAt (0.0, 1.0, 0.0);
   VEC3 u (0.0, 1.0, 0.0);
 
@@ -30,31 +44,75 @@ void test (void)
   setPerspective (1.0, 65.0, (float) x / (float) y);
   setRes (x, y);
   setDepthLimit (depthLimit);
-  // setDepthField (0.15, 10.0, 10);
 
-  clearObjects ();
-  clearLights ();
-
-  Actor *a;
-
-  addFloor ();
-
-  // makeSphere (0.2, 0, VEC3 (0.75, 0.75, 0.75), VEC3 (2.0, 3.0, 2.0), VEC3::Zero ());
+  if (state == 3) {
+    setDepthField (0.5, 8.0, 100);
+  }
   
-  a = new Sphere (VEC3 (0.0, 2.0, 0.0), 1.0);
-  a->setColor (VEC3 (0.0, 0.0, 1.0));
-  addObject (shared_ptr<Actor> (a));
+  int rank, size;
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
-  a = new Sphere (VEC3 (-2.0, 2.0, 2.0), 1.0);
-  a->setColor (VEC3 (0.0, 1.0, 0.0));
-  addObject (shared_ptr<Actor> (a));
+  int step = num / size;
+  int s = rank * step;
+  int e = s + step;
 
-  a = new Sphere (VEC3 (2.0, 2.0, -2.0), 1.0);
-  a->setColor (VEC3 (1.0, 0.0, 0.0));
-  addObject (shared_ptr<Actor> (a));
 
-  sprintf (name, "Frames/distro.ppm");
-  makeFrame (string (name));
+  for (int i = s; i < e; ++i) {
+    clearObjects ();
+    clearLights (); 
+
+    shared_ptr<Triangle> t0 = make_shared<Triangle> (VEC3 (-10.0, 0.0, -10.0),
+                                                     VEC3 (10.0, 0.0, -10.0),
+                                                     VEC3 (-10.0, 0.0, 10.0),
+                                                     VEC3 (0.0, 1.0, 0.0));
+    t0->setColor (VEC3 (0.0, 1.0, 0.0));
+    addObject (t0);
+
+    shared_ptr<Triangle> t1 = make_shared<Triangle> (VEC3 (10.0, 0.0, 10.0),
+                                                     VEC3 (10.0, 0.0, -10.0),
+                                                     VEC3 (-10.0, 0.0, 10.0),
+                                                     VEC3 (0.0, 1.0, 0.0));
+    t1->setColor (VEC3 (1.0, 0.0, 0.0));
+    addObject (t1);
+
+    shared_ptr<Sphere> s0 = make_shared<Sphere> (VEC3 (0.0, 2.0, 0.0), 1.0);
+    s0->setColor (VEC3 (0.0, 0.0, 1.0));
+    addObject (s0);
+    
+    
+    if (state == 0) {
+      shared_ptr<Point> s1 = make_shared<Point> (VEC3 (-2.0, 3.0, -2.0));
+      shared_ptr<Light> l0 = make_shared<Light> (s1, VEC3 (1.0, 1.0, 1.0), 1.0);
+      addObject (l0);
+      addLight (l0);
+    } else if (state == 1) {
+      shared_ptr<Sphere> s2 = make_shared<Sphere> (VEC3 (-2.0, 3.0, -2.0), 0.25);
+      s2->setColor (VEC3 (1.0, 1.0, 1.0));
+      shared_ptr<Light> l1 = make_shared<Light> (s2, VEC3 (1.0, 1.0, 1.0), 1.0);
+      addObject (l1);
+      addLight (l1);
+    } else if (state == 2 || state == 3) {
+      shared_ptr<Point> s5 = make_shared<Point> (VEC3 (2.0, 3.0, 2.0));
+      shared_ptr<Light> l3 = make_shared<Light> (s5, VEC3 (1.0, 1.0, 1.0), 1.0);
+      addObject (l3);
+      addLight (l3);
+    }
+
+
+    if (state == 2 || state == 3) {
+     shared_ptr<Sphere> s3 = make_shared<Sphere> (VEC3 (2.0, 2.0, -2.0), 1.0);
+     s3->setColor (VEC3 (1.0, 0.0, 0.0));
+     addObject (s3);
+
+     shared_ptr<Sphere> s4 = make_shared<Sphere> (VEC3 (-2.0, 2.0, 2.0), 1.0);
+     s4->setColor (VEC3 (0.0, 1.0, 0.0));
+     addObject (s4);
+    }
+    
+    sprintf (name, "Tests/424_Test_%02d_%02d_%02d.ppm", state, i, size);
+    makeFrame (string (name));
+  }
 }
 
 void movie (void)
@@ -73,8 +131,8 @@ void movie (void)
   // Starting Frame = 1900
   // Ending Frame = 2750
   // Variables to adjust movie start and end
-  int rankStart = 270;
-  int rankEnd = 271;
+  int startFrame = 0;
+  int endFrame = 300;
   int FPS = 4;
   int FPSz = 1;
 
@@ -95,14 +153,31 @@ void movie (void)
   VEC3 translateZomTwo (7.0, 0.0, -3.0);
 
 
-  // Iterative
-  int i;
+  // Iterative and MPI variables
+  int i, rank, size, rankStart, rankEnd;
 
   // Event variables
   int eventOne = 0;
   float eventTwo = 2.0;
 
-  if (rankEnd > rankStart) {
+  // Get MPI values
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+  if (size > (endFrame - startFrame)) {
+    rankStart = startFrame + rank;
+    rankEnd = rankStart + 1;
+
+  } else if ((endFrame - startFrame) % size == 0) {
+    int step = (endFrame - startFrame) / size;
+    rankStart = startFrame + rank * step;
+    rankEnd = rankStart + step;
+  } else {
+    rankStart = 0;
+    rankEnd = 0;
+  }
+
+  if (rankEnd > rankStart && rankEnd <= endFrame) {
     int s = 1900 + (rankStart * FPS);
     int e = (int) ((2740.0 - (float) s) / (float) FPS);
     int szOne = (rankStart * FPSz) - (65 * FPSz);
@@ -149,9 +224,11 @@ void movie (void)
       makeFrame (string (name));
     }
   }
-  
-  // Compile whole movie when rendering is complete
-  // compileMovie (string (root));
+
+  MPI_Barrier (MPI_COMM_WORLD);
+  if (rank == 0) {
+    compileMovie (string (root));
+  }
 }
 
 void addFloor (void) {
