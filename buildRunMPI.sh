@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=cpsc424
 
-#SBATCH --ntasks=100
+#SBATCH --ntasks=30
 
 #SBATCH --ntasks-per-node=5
 
@@ -20,4 +20,4 @@ module load iomkl
 make clean
 make
 
-mpiexec -n 100 ./run
+mpiexec -n 30 ./run

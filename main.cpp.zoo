@@ -73,8 +73,8 @@ void movie (void)
   // Starting Frame = 1900
   // Ending Frame = 2750
   // Variables to adjust movie start and end
-  int rankStart = 270;
-  int rankEnd = 271;
+  int rankStart = 0;
+  int rankEnd = 300;
   int FPS = 4;
   int FPSz = 1;
 

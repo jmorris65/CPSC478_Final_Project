@@ -1,4 +1,5 @@
 #include "MAIN.h"
+#include "mpi.h"
 // Start work on OpenMP
 using namespace std;
 
@@ -10,8 +11,10 @@ void test (void);
 
 int main (int argc, char **argv)
 {
+  MPI_Init (&argc, &argv); 
   movie ();
   // test ();
+  MPI_Finalize ();
   return EXIT_SUCCESS;
 }
 
@@ -73,8 +76,8 @@ void movie (void)
   // Starting Frame = 1900
   // Ending Frame = 2750
   // Variables to adjust movie start and end
-  int rankStart = 270;
-  int rankEnd = 271;
+  int startFrame = 0;
+  int endFrame = 300;
   int FPS = 4;
   int FPSz = 1;
 
@@ -95,14 +98,31 @@ void movie (void)
   VEC3 translateZomTwo (7.0, 0.0, -3.0);
 
 
-  // Iterative
-  int i;
+  // Iterative and MPI variables
+  int i, rank, size, rankStart, rankEnd;
 
   // Event variables
   int eventOne = 0;
   float eventTwo = 2.0;
 
-  if (rankEnd > rankStart) {
+  // Get MPI values
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+  if (size > (endFrame - startFrame)) {
+    rankStart = startFrame + rank;
+    rankEnd = rankStart + 1;
+
+  } else if ((endFrame - startFrame) % size == 0) {
+    int step = (endFrame - startFrame) / size;
+    rankStart = startFrame + rank * step;
+    rankEnd = rankStart + step;
+  } else {
+    rankStart = 0;
+    rankEnd = 0;
+  }
+
+  if (rankEnd > rankStart && rankEnd <= endFrame) {
     int s = 1900 + (rankStart * FPS);
     int e = (int) ((2740.0 - (float) s) / (float) FPS);
     int szOne = (rankStart * FPSz) - (65 * FPSz);
@@ -149,9 +169,11 @@ void movie (void)
       makeFrame (string (name));
     }
   }
-  
-  // Compile whole movie when rendering is complete
-  // compileMovie (string (root));
+
+  MPI_Barrier (MPI_COMM_WORLD);
+  if (rank == 0) {
+    compileMovie (string (root));
+  }
 }
 
 void addFloor (void) {

@@ -21,10 +21,10 @@ SOURCES    = main.cpp\
 OBJECTS    = $(SOURCES:.cpp=.o)
 
 .cpp.o:
-	g++ -w -O3 -c $< -o $@
+	mpicxx -g -O3 -w -c $< -o $@
 
 run: ${OBJECTS}
-	g++ $(OBJECTS) $(LDFLAGS) -o $@
+	mpicxx -g $(OBJECTS) $(LDFLAGS) -o $@
 
 clean:
 	rm -f *.o ${CLASSDIR}/*.o ${TOOLDIR}/*.o run
